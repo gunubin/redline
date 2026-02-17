@@ -1,6 +1,6 @@
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { stripMarkdown, normalizeWhitespace } from './strip.js';
+import { stripMarkdown, normalizeWhitespace, normalizeTypography } from './strip.js';
 
 export interface MatchResult {
   filePath: string;
@@ -62,7 +62,7 @@ export function listMarkdownFiles(rootDir: string, prefix = ''): string[] {
 export function findInSource(filePath: string, selectedText: string): MatchResult | null {
   const source = readFileSync(filePath, 'utf-8');
   const lines = source.split('\n');
-  const normalizedSelected = normalizeWhitespace(selectedText);
+  const normalizedSelected = normalizeTypography(normalizeWhitespace(selectedText));
 
   if (!normalizedSelected) return null;
 
@@ -116,7 +116,7 @@ export function findInSource(filePath: string, selectedText: string): MatchResul
   // between the normalized search string and the character count loop.
   const entries: { text: string; lineIndex: number }[] = [];
   for (const pl of plainLines) {
-    const normalized = normalizeWhitespace(pl.text);
+    const normalized = normalizeTypography(normalizeWhitespace(pl.text));
     if (normalized) {
       entries.push({ text: normalized, lineIndex: pl.lineIndex });
     }
@@ -194,7 +194,7 @@ export function findSection(
     const trimmed = lines[i]!.trim();
     if (trimmed.startsWith(headingPrefix)) {
       const text = stripMarkdown(trimmed);
-      if (normalizeWhitespace(text) === normalizeWhitespace(headingText)) {
+      if (normalizeTypography(normalizeWhitespace(text)) === normalizeTypography(normalizeWhitespace(headingText))) {
         startLine = i;
         break;
       }

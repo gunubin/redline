@@ -123,7 +123,7 @@ export async function startProxyMode(opts: ProxyOptions): Promise<void> {
       const urlPath = req.url ?? '/';
       const filePath = routeMap.resolve(urlPath) ?? '';
 
-      // Inject config + overlay before </body>
+      // Inject config + Tailwind CDN + theme + overlay before </body>
       const injection = `
 <script>
 window.__REDLINE_CONFIG = {
@@ -133,6 +133,38 @@ window.__REDLINE_CONFIG = {
 };
 </script>
 <script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        ctp: {
+          base: '#1e1e2e',
+          mantle: '#181825',
+          crust: '#11111b',
+          surface0: '#313244',
+          surface1: '#45475a',
+          surface2: '#585b70',
+          overlay0: '#6c7086',
+          overlay1: '#7f849c',
+          subtext0: '#a6adc8',
+          subtext1: '#bac2de',
+          text: '#cdd6f4',
+          mauve: '#cba6f7',
+          lavender: '#b4befe',
+          blue: '#89b4fa',
+          sapphire: '#74c7ec',
+          green: '#a6e3a1',
+          yellow: '#f9e2af',
+          peach: '#fab387',
+          red: '#f38ba8',
+          pink: '#f5c2e7',
+        }
+      }
+    }
+  }
+}
+</script>
 <script src="/__redline/overlay.js"></script>`;
 
       html = html.replace('</body>', `${injection}\n</body>`);

@@ -14,3 +14,12 @@ export function stripMarkdown(line: string): string {
 export function normalizeWhitespace(text: string): string {
   return text.replace(/\s+/g, ' ').trim();
 }
+
+export function normalizeTypography(text: string): string {
+  return text
+    .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')  // smart double quotes → straight
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")                // smart single quotes → straight
+    .replace(/\u2014/g, '--')                                    // em dash → --
+    .replace(/\u2013/g, '-')                                     // en dash → -
+    .replace(/\u2026/g, '...');                                  // ellipsis → ...
+}

@@ -909,3 +909,61 @@ def setup():
     assert.ok(result.matchedSource.endsWith('段落。'));
   });
 });
+
+// =====================================================
+// findInSource - タイポグラフィ正規化
+// =====================================================
+describe('findInSource - タイポグラフィ正規化', () => {
+  it('スマートダブルクォートをストレートクォートにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+What remains is "the ability to experience friction and derive ideas for specifications."
+`);
+    // ブラウザが選択したテキスト（スマートクォート付き）
+    const selected = 'What remains is \u201Cthe ability to experience friction and derive ideas for specifications.\u201D';
+    const result = findInSource(file, selected);
+    assert.ok(result, 'スマートダブルクォートでマッチしない');
+    assert.equal(result.startLine, 5);
+  });
+
+  it('スマートシングルクォートをストレートクォートにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+It's a developer's tool.
+`);
+    const selected = 'It\u2019s a developer\u2019s tool.';
+    const result = findInSource(file, selected);
+    assert.ok(result, 'スマートシングルクォートでマッチしない');
+    assert.equal(result.startLine, 5);
+  });
+
+  it('emダッシュをダブルハイフンにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+This is important--very important.
+`);
+    const selected = 'This is important\u2014very important.';
+    const result = findInSource(file, selected);
+    assert.ok(result, 'emダッシュでマッチしない');
+    assert.equal(result.startLine, 5);
+  });
+
+  it('省略記号をドット3つにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+Wait for it...
+`);
+    const selected = 'Wait for it\u2026';
+    const result = findInSource(file, selected);
+    assert.ok(result, '省略記号でマッチしない');
+    assert.equal(result.startLine, 5);
+  });
+});
