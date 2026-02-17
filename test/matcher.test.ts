@@ -895,6 +895,35 @@ def setup():
     assert.ok(!result.matchedSource.includes('次のセクション'));
   });
 
+  it('スマートクォート付き見出しでセクションを取得できる（typography normalization）', () => {
+    // Source has straight quotes, browser sends smart quotes
+    const file = createTestFile(`# "引用付き" 見出し
+
+段落A。
+
+# 次の見出し
+
+段落B。
+`);
+    const result = findSection(file, '\u201C引用付き\u201D 見出し', 1);
+    assert.ok(result, 'スマートクォートでマッチしない');
+    assert.ok(result.matchedSource.includes('段落A。'));
+    assert.ok(!result.matchedSource.includes('段落B。'));
+  });
+
+  it('emダッシュ付き見出しでセクションを取得できる（typography normalization）', () => {
+    const file = createTestFile(`## 概要--詳細
+
+内容。
+
+## 次のセクション
+`);
+    // Browser may render -- as em-dash
+    const result = findSection(file, '概要\u2014詳細', 2);
+    assert.ok(result, 'emダッシュでマッチしない');
+    assert.ok(result.matchedSource.includes('内容。'));
+  });
+
   it('末尾の空行がmatchedSourceに含まれない', () => {
     const file = createTestFile(`# セクション1
 

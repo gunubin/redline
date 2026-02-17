@@ -163,4 +163,122 @@ describe('/api/undo & /api/redo', () => {
     const afterUndo = readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8');
     assert.equal(afterUndo, 'line1\nline2\nline3\n');
   });
+
+  it('複数回の連続 undo（apply A → apply B → undo B → undo A）', async () => {
+    // Apply A: replace line1
+    await req(app, 'POST', '/api/apply', {
+      filePath: TEST_FILE,
+      startLine: 1,
+      endLine: 1,
+      modified: 'ALPHA',
+    });
+    assert.equal(readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8'), 'ALPHA\nline2\nline3\n');
+
+    // Apply B: replace line3
+    await req(app, 'POST', '/api/apply', {
+      filePath: TEST_FILE,
+      startLine: 3,
+      endLine: 3,
+      modified: 'BETA',
+    });
+    assert.equal(readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8'), 'ALPHA\nline2\nBETA\n');
+
+    // Undo B
+    const undo1 = await req(app, 'POST', '/api/undo', { filePath: TEST_FILE });
+    assert.equal(undo1.status, 200);
+    assert.equal(readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8'), 'ALPHA\nline2\nline3\n');
+
+    // Undo A
+    const undo2 = await req(app, 'POST', '/api/undo', { filePath: TEST_FILE });
+    assert.equal(undo2.status, 200);
+    assert.equal(readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8'), 'line1\nline2\nline3\n');
+  });
+
+  it('逆方向の行数変化（3行→1行に変更後の undo で3行復元）', async () => {
+    // Write a 5-line file
+    writeFileSync(join(TEST_DIR, TEST_FILE), 'a\nb\nc\nd\ne\n', 'utf-8');
+
+    // Replace lines 2-4 (3 lines) with single line
+    await req(app, 'POST', '/api/apply', {
+      filePath: TEST_FILE,
+      startLine: 2,
+      endLine: 4,
+      modified: 'SINGLE',
+    });
+    assert.equal(readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8'), 'a\nSINGLE\ne\n');
+
+    // Undo should restore 3 lines
+    const undoRes = await req(app, 'POST', '/api/undo', { filePath: TEST_FILE });
+    assert.equal(undoRes.status, 200);
+    assert.equal(readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8'), 'a\nb\nc\nd\ne\n');
+
+    // Redo should collapse back to single line
+    const redoRes = await req(app, 'POST', '/api/redo', { filePath: TEST_FILE });
+    assert.equal(redoRes.status, 200);
+    assert.equal(readFileSync(join(TEST_DIR, TEST_FILE), 'utf-8'), 'a\nSINGLE\ne\n');
+  });
+
+  it('空ログで redo → 400', async () => {
+    const res = await req(app, 'POST', '/api/redo', { filePath: TEST_FILE });
+    assert.equal(res.status, 400);
+    const data = await res.json();
+    assert.equal(data.error, 'Nothing to redo');
+  });
+
+  it('redo 前の外部変更検出 → 409', async () => {
+    await req(app, 'POST', '/api/apply', {
+      filePath: TEST_FILE,
+      startLine: 2,
+      endLine: 2,
+      modified: 'MODIFIED',
+    });
+    await req(app, 'POST', '/api/undo', { filePath: TEST_FILE });
+
+    // Simulate external edit after undo
+    writeFileSync(join(TEST_DIR, TEST_FILE), 'externally\nchanged\n', 'utf-8');
+
+    const res = await req(app, 'POST', '/api/redo', { filePath: TEST_FILE });
+    assert.equal(res.status, 409);
+  });
+
+  it('undo レスポンスに scrollHint が含まれる', async () => {
+    await req(app, 'POST', '/api/apply', {
+      filePath: TEST_FILE,
+      startLine: 2,
+      endLine: 2,
+      modified: 'MODIFIED',
+    });
+
+    const undoRes = await req(app, 'POST', '/api/undo', { filePath: TEST_FILE });
+    const undoData = await undoRes.json();
+    assert.equal(undoData.success, true);
+    assert.ok(typeof undoData.scrollHint === 'string');
+    assert.ok(undoData.scrollHint.includes('line2'));
+  });
+
+  it('redo レスポンスに scrollHint が含まれる', async () => {
+    await req(app, 'POST', '/api/apply', {
+      filePath: TEST_FILE,
+      startLine: 2,
+      endLine: 2,
+      modified: 'MODIFIED',
+    });
+    await req(app, 'POST', '/api/undo', { filePath: TEST_FILE });
+
+    const redoRes = await req(app, 'POST', '/api/redo', { filePath: TEST_FILE });
+    const redoData = await redoRes.json();
+    assert.equal(redoData.success, true);
+    assert.ok(typeof redoData.scrollHint === 'string');
+    assert.ok(redoData.scrollHint.includes('MODIFIED'));
+  });
+
+  it('filePath 未指定で undo → 400', async () => {
+    const res = await req(app, 'POST', '/api/undo', {});
+    assert.equal(res.status, 400);
+  });
+
+  it('filePath 未指定で redo → 400', async () => {
+    const res = await req(app, 'POST', '/api/redo', {});
+    assert.equal(res.status, 400);
+  });
 });
