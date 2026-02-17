@@ -8,10 +8,18 @@ import { DEFAULT_FIRST_CALL, DEFAULT_SUBSEQUENT_CALL, renderPrompt } from './pro
 export class ClaudeCodeAgent implements Agent {
   private firstCallTemplate: string;
   private subsequentCallTemplate: string;
+  private model?: string;
+  private maxBudgetUsd?: number;
+  private systemPrompt?: string;
+  private effort?: string;
 
   constructor(agentConfig?: AgentConfig) {
     this.firstCallTemplate = agentConfig?.prompt_first_call ?? DEFAULT_FIRST_CALL;
     this.subsequentCallTemplate = agentConfig?.prompt_subsequent_call ?? DEFAULT_SUBSEQUENT_CALL;
+    this.model = agentConfig?.model;
+    this.maxBudgetUsd = agentConfig?.max_budget_usd;
+    this.systemPrompt = agentConfig?.system_prompt;
+    this.effort = agentConfig?.effort;
   }
 
   buildPrompt(ctx: EditContext, isFirstCall: boolean): string {
@@ -43,7 +51,11 @@ export class ClaudeCodeAgent implements Agent {
       const env = Object.fromEntries(
         Object.entries(process.env).filter(([key]) => key !== 'CLAUDECODE'),
       );
-      const args = ['--print'];
+      const args = ['--print', '--tools', ''];
+      if (this.model) args.push('--model', this.model);
+      if (this.maxBudgetUsd) args.push('--max-budget-usd', String(this.maxBudgetUsd));
+      if (this.systemPrompt) args.push('--system-prompt', this.systemPrompt);
+      if (this.effort) args.push('--effort', this.effort);
       if (isFirstCall) {
         const sessionId = randomUUID();
         setSession(fileKey, sessionId);

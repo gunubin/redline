@@ -16,6 +16,10 @@ export interface ProxyConfig {
 export interface AgentConfig {
   prompt_first_call?: string;
   prompt_subsequent_call?: string;
+  model?: string;
+  max_budget_usd?: number;
+  system_prompt?: string;
+  effort?: string;
 }
 
 export interface RedlineConfig {
@@ -49,6 +53,10 @@ export function loadConfig(configPath: string): RedlineConfig | null {
     agent?: {
       prompt_first_call?: string;
       prompt_subsequent_call?: string;
+      model?: string;
+      max_budget_usd?: number;
+      system_prompt?: string;
+      effort?: string;
     };
   };
   try {
@@ -72,6 +80,10 @@ export function loadConfig(configPath: string): RedlineConfig | null {
     agent: {
       prompt_first_call: parsed.agent?.prompt_first_call,
       prompt_subsequent_call: parsed.agent?.prompt_subsequent_call,
+      model: parsed.agent?.model,
+      max_budget_usd: parsed.agent?.max_budget_usd,
+      system_prompt: parsed.agent?.system_prompt,
+      effort: parsed.agent?.effort,
     },
   };
 }

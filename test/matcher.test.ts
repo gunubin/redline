@@ -895,6 +895,35 @@ def setup():
     assert.ok(!result.matchedSource.includes('次のセクション'));
   });
 
+  it('スマートクォート付き見出しでセクションを取得できる（typography normalization）', () => {
+    // Source has straight quotes, browser sends smart quotes
+    const file = createTestFile(`# "引用付き" 見出し
+
+段落A。
+
+# 次の見出し
+
+段落B。
+`);
+    const result = findSection(file, '\u201C引用付き\u201D 見出し', 1);
+    assert.ok(result, 'スマートクォートでマッチしない');
+    assert.ok(result.matchedSource.includes('段落A。'));
+    assert.ok(!result.matchedSource.includes('段落B。'));
+  });
+
+  it('emダッシュ付き見出しでセクションを取得できる（typography normalization）', () => {
+    const file = createTestFile(`## 概要--詳細
+
+内容。
+
+## 次のセクション
+`);
+    // Browser may render -- as em-dash
+    const result = findSection(file, '概要\u2014詳細', 2);
+    assert.ok(result, 'emダッシュでマッチしない');
+    assert.ok(result.matchedSource.includes('内容。'));
+  });
+
   it('末尾の空行がmatchedSourceに含まれない', () => {
     const file = createTestFile(`# セクション1
 
@@ -907,5 +936,63 @@ def setup():
     const result = findSection(file, 'セクション1', 1);
     assert.ok(result);
     assert.ok(result.matchedSource.endsWith('段落。'));
+  });
+});
+
+// =====================================================
+// findInSource - タイポグラフィ正規化
+// =====================================================
+describe('findInSource - タイポグラフィ正規化', () => {
+  it('スマートダブルクォートをストレートクォートにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+What remains is "the ability to experience friction and derive ideas for specifications."
+`);
+    // ブラウザが選択したテキスト（スマートクォート付き）
+    const selected = 'What remains is \u201Cthe ability to experience friction and derive ideas for specifications.\u201D';
+    const result = findInSource(file, selected);
+    assert.ok(result, 'スマートダブルクォートでマッチしない');
+    assert.equal(result.startLine, 5);
+  });
+
+  it('スマートシングルクォートをストレートクォートにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+It's a developer's tool.
+`);
+    const selected = 'It\u2019s a developer\u2019s tool.';
+    const result = findInSource(file, selected);
+    assert.ok(result, 'スマートシングルクォートでマッチしない');
+    assert.equal(result.startLine, 5);
+  });
+
+  it('emダッシュをダブルハイフンにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+This is important--very important.
+`);
+    const selected = 'This is important\u2014very important.';
+    const result = findInSource(file, selected);
+    assert.ok(result, 'emダッシュでマッチしない');
+    assert.equal(result.startLine, 5);
+  });
+
+  it('省略記号をドット3つにマッチする', () => {
+    const file = createTestFile(`---
+title: test
+---
+
+Wait for it...
+`);
+    const selected = 'Wait for it\u2026';
+    const result = findInSource(file, selected);
+    assert.ok(result, '省略記号でマッチしない');
+    assert.equal(result.startLine, 5);
   });
 });

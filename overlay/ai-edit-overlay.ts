@@ -35,7 +35,7 @@ interface EditResponse {
   mode?: string;
 }
 
-// --- Active panel tracking (suppress HMR while panels open) ---
+// --- Active panel tracking (suppress redline HMR while panels open) ---
 let activePanels = 0;
 let pendingReload = false;
 
@@ -51,7 +51,7 @@ function trackPanelClose() {
   }
 }
 
-// Exposed for HMR script to call
+// Exposed for redline's own HMR script (normal/serve mode)
 (window as any).__REDLINE_SHOULD_RELOAD = () => {
   if (activePanels > 0) {
     pendingReload = true;
@@ -113,6 +113,13 @@ const tw = {
   modalContent: 'bg-ctp-surface0 w-full sm:max-w-lg sm:rounded-lg rounded-t-xl p-4 max-h-[80vh] overflow-auto',
   sectionBtn: 'inline-flex items-center justify-center w-8 h-8 min-w-[44px] min-h-[44px] rounded-md bg-ctp-mauve/0 hover:bg-ctp-mauve/20 text-ctp-overlay0 hover:text-ctp-mauve cursor-pointer border-none transition-colors ml-2 align-middle touch-manipulation',
   diffHistory: 'opacity-40 pointer-events-none border-b border-ctp-surface1 pb-2 mb-2',
+  undoBar: 'fixed bottom-24 right-6 z-[9990] flex gap-2',
+  undoBtn: 'min-h-[44px] min-w-[44px] px-3 py-2 rounded-lg text-sm font-semibold border-none cursor-pointer shadow-lg touch-manipulation flex items-center gap-1 transition-opacity',
+  undoActive: 'bg-ctp-blue text-ctp-crust active:bg-ctp-sapphire',
+  undoDisabled: 'opacity-40 pointer-events-none bg-ctp-surface1 text-ctp-overlay0',
+  toast: 'fixed bottom-44 right-6 z-[10002] px-4 py-2 rounded-lg text-sm font-semibold shadow-lg transition-opacity duration-300',
+  toastSuccess: 'bg-ctp-green text-ctp-crust',
+  toastError: 'bg-ctp-red text-ctp-crust',
 } as const;
 
 // --- Floating Button ---
@@ -476,6 +483,7 @@ function showDiff(
         successMsg.className = 'p-3 text-ctp-green font-semibold text-center';
         successMsg.textContent = 'Applied!';
         container.appendChild(successMsg);
+        refreshHistoryState();
         setTimeout(() => {
           container.remove();
           trackPanelClose();
@@ -898,8 +906,213 @@ function showSectionEditor(headingEl: HTMLElement, headingText: string, level: n
   });
 }
 
+// --- Toast ---
+function showToast(message: string, type: 'success' | 'error') {
+  const toast = document.createElement('div');
+  toast.className = `${tw.toast} ${type === 'success' ? tw.toastSuccess : tw.toastError}`;
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 1500);
+}
+
+// --- Undo/Redo Bar ---
+let undoBtn: HTMLButtonElement | null = null;
+let redoBtn: HTMLButtonElement | null = null;
+let undoBarEl: HTMLDivElement | null = null;
+let historyCanUndo = false;
+let historyCanRedo = false;
+
+async function refreshHistoryState() {
+  if (!filePath) return;
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/history-state?filePath=${encodeURIComponent(filePath)}`,
+    );
+    if (!res.ok) {
+      console.warn(`[AI Edit] refreshHistoryState: HTTP ${res.status}`);
+      return;
+    }
+    const data: { canUndo: boolean; canRedo: boolean } = await res.json();
+    historyCanUndo = data.canUndo;
+    historyCanRedo = data.canRedo;
+    updateUndoBarState();
+  } catch (err) {
+    console.warn('[AI Edit] Failed to refresh history state:', err);
+  }
+}
+
+function updateUndoBarState() {
+  if (!undoBtn || !redoBtn || !undoBarEl) return;
+  undoBtn.className = `${tw.undoBtn} ${historyCanUndo ? tw.undoActive : tw.undoDisabled}`;
+  redoBtn.className = `${tw.undoBtn} ${historyCanRedo ? tw.undoActive : tw.undoDisabled}`;
+  // Show bar only when at least one action is available
+  undoBarEl.style.display = historyCanUndo || historyCanRedo ? 'flex' : 'none';
+}
+
+async function performUndo() {
+  if (!historyCanUndo || !filePath) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/undo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath }),
+    });
+    const data = await res.json().catch(() => ({ error: 'Invalid server response' }));
+    if (res.ok) {
+      showToast('Undo successful', 'success');
+      if (data.scrollHint) {
+        sessionStorage.setItem('__REDLINE_SCROLL_HINT', data.scrollHint);
+      }
+    } else if (res.status === 409) {
+      showToast(data.error || 'File modified externally', 'error');
+    } else {
+      showToast(data.error || 'Undo failed', 'error');
+    }
+  } catch (err) {
+    console.warn('[AI Edit] performUndo failed:', err);
+    showToast('API connection failed', 'error');
+  }
+  await refreshHistoryState();
+}
+
+async function performRedo() {
+  if (!historyCanRedo || !filePath) return;
+  try {
+    const res = await fetch(`${API_BASE}/api/redo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filePath }),
+    });
+    const data = await res.json().catch(() => ({ error: 'Invalid server response' }));
+    if (res.ok) {
+      showToast('Redo successful', 'success');
+      if (data.scrollHint) {
+        sessionStorage.setItem('__REDLINE_SCROLL_HINT', data.scrollHint);
+      }
+    } else if (res.status === 409) {
+      showToast(data.error || 'File modified externally', 'error');
+    } else {
+      showToast(data.error || 'Redo failed', 'error');
+    }
+  } catch (err) {
+    console.warn('[AI Edit] performRedo failed:', err);
+    showToast('API connection failed', 'error');
+  }
+  await refreshHistoryState();
+}
+
+// Scroll to affected DOM element after undo/redo reload
+function normalizeForSearch(text: string): string {
+  return text
+    // smart quotes → straight
+    .replace(/[\u201C\u201D\u201E\u201F\u00AB\u00BB]/g, '"')
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
+    .replace(/\u2014/g, '--')
+    .replace(/\u2013/g, '-')
+    .replace(/\u2026/g, '...')
+    // collapse whitespace
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function stripMarkdownForHint(text: string): string {
+  return text
+    .replace(/^#{1,6}\s+/gm, '')       // headings
+    .replace(/^\s*[-*+]\s+/gm, '')     // unordered list
+    .replace(/^\s*\d+\.\s+/gm, '')     // ordered list
+    .replace(/\*\*(.+?)\*\*/g, '$1')   // bold
+    .replace(/\*(.+?)\*/g, '$1')       // italic
+    .replace(/`(.+?)`/g, '$1')         // inline code
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1') // links
+    .replace(/<\/?[a-zA-Z][^>]*>/g, '') // HTML tags
+    .trim();
+}
+
+function findElementByText(root: Element, needle: string): HTMLElement | null {
+  // Build concatenated textContent for each block-level element, then match.
+  // This handles text split across inline child nodes (e.g. <strong>, <code>).
+  const blocks = Array.from(root.querySelectorAll('p, h1, h2, h3, h4, h5, h6, li, td, th, blockquote, figcaption, dt, dd'));
+  for (const el of blocks) {
+    const elText = normalizeForSearch(el.textContent ?? '');
+    if (elText.includes(needle)) {
+      return el as HTMLElement;
+    }
+  }
+  return null;
+}
+
+function scrollToHint() {
+  const hint = sessionStorage.getItem('__REDLINE_SCROLL_HINT');
+  if (!hint) return;
+  sessionStorage.removeItem('__REDLINE_SCROLL_HINT');
+
+  const plainHint = normalizeForSearch(stripMarkdownForHint(hint));
+  if (!plainHint || plainHint.length < 4) return;
+
+  const selector = window.__REDLINE_CONFIG?.articleSelector ?? 'body';
+  const root = document.querySelector(selector);
+  if (!root) return;
+
+  // Try progressively shorter needles (50 → 30 → 15 chars)
+  const lengths = [50, 30, 15];
+  let target: HTMLElement | null = null;
+  for (const len of lengths) {
+    const needle = plainHint.slice(0, Math.min(len, plainHint.length));
+    target = findElementByText(root, needle);
+    if (target) break;
+  }
+
+  if (!target) return;
+
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Brief highlight flash
+  const prev = target.style.transition;
+  const prevBg = target.style.backgroundColor;
+  target.style.transition = 'background-color 0.3s';
+  target.style.backgroundColor = 'rgba(249, 226, 175, 0.35)'; // ctp-yellow 35%
+  setTimeout(() => {
+    target!.style.backgroundColor = prevBg;
+    setTimeout(() => { target!.style.transition = prev; }, 300);
+  }, 1500);
+}
+
+function createUndoBar() {
+  if (!filePath) return;
+
+  const bar = document.createElement('div');
+  bar.className = tw.undoBar;
+  bar.style.display = 'none';
+
+  const undo = document.createElement('button');
+  undo.className = `${tw.undoBtn} ${tw.undoDisabled}`;
+  undo.textContent = '↩ Undo';
+  undo.addEventListener('click', performUndo);
+
+  const redo = document.createElement('button');
+  redo.className = `${tw.undoBtn} ${tw.undoDisabled}`;
+  redo.textContent = '↪ Redo';
+  redo.addEventListener('click', performRedo);
+
+  bar.appendChild(undo);
+  bar.appendChild(redo);
+  document.body.appendChild(bar);
+
+  undoBtn = undo;
+  redoBtn = redo;
+  undoBarEl = bar;
+}
+
 // --- Initialize ---
 createFab();
+createUndoBar();
 setupSectionButtons();
+refreshHistoryState();
+
+// Delay scroll hint to ensure DOM is fully rendered (SPA hydration, etc.)
+setTimeout(scrollToHint, 300);
 
 console.log('[AI Edit] Overlay loaded for', filePath);

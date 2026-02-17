@@ -84,3 +84,34 @@ describe('ClaudeCodeAgent.buildPrompt', () => {
     assert.equal(prompt, 'make it shorter {{unknownVar}}');
   });
 });
+
+describe('ClaudeCodeAgent CLI options', () => {
+  it('configなしでもインスタンス生成できる', () => {
+    const agent = new ClaudeCodeAgent();
+    assert.ok(agent);
+  });
+
+  it('全オプション指定でインスタンス生成できる', () => {
+    const agent = new ClaudeCodeAgent({
+      prompt_first_call: 'custom',
+      prompt_subsequent_call: 'custom2',
+      model: 'haiku',
+      max_budget_usd: 0.05,
+      system_prompt: 'You are a markdown editor.',
+      effort: 'low',
+    });
+    assert.ok(agent);
+    // buildPrompt が壊れていないことを確認
+    const prompt = agent.buildPrompt(baseCtx, true);
+    assert.equal(prompt, 'custom');
+  });
+
+  it('一部オプションのみ指定でもデフォルトが維持される', () => {
+    const agent = new ClaudeCodeAgent({
+      model: 'sonnet',
+    });
+    // デフォルトテンプレートが使われる
+    const prompt = agent.buildPrompt(baseCtx, true);
+    assert.ok(prompt.includes('ドキュメントの編集アシスタント'));
+  });
+});
