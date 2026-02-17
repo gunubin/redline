@@ -84,6 +84,9 @@ function createSvgIcon(pathD: string, className: string): SVGSVGElement {
 }
 
 const EDIT_ICON_PATH = 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z';
+const CLOSE_ICON_PATH = 'M6 18L18 6M6 6l12 12';
+const UNDO_ICON_PATH = 'M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4';
+const REDO_ICON_PATH = 'M21 10H11a5 5 0 00-5 5v2M21 10l-4-4M21 10l-4 4';
 
 // --- Tailwind class maps ---
 const tw = {
@@ -109,15 +112,15 @@ const tw = {
   reply: 'bg-ctp-mauve text-ctp-crust',
   highlight: 'bg-ctp-mauve/25 text-inherit border-b-2 border-ctp-mauve rounded-sm',
   fab: 'fixed bottom-6 right-6 z-[10000] bg-ctp-mauve text-ctp-crust border-none rounded-full w-14 h-14 text-lg font-bold cursor-pointer shadow-xl touch-manipulation active:bg-ctp-lavender flex items-center justify-center hover:scale-105 transition-transform',
+  fabMenu: 'fixed bottom-[5.5rem] right-6 z-[10000] flex flex-col gap-2',
+  fabMenuItem: 'min-h-[44px] px-4 py-2 rounded-lg text-sm font-semibold border-none cursor-pointer shadow-lg touch-manipulation flex items-center gap-2 whitespace-nowrap',
+  fabMenuActive: 'bg-ctp-surface0 text-ctp-text active:bg-ctp-surface1',
+  fabMenuDisabled: 'bg-ctp-surface1 text-ctp-overlay0 pointer-events-none',
   modal: 'fixed inset-0 z-[10001] bg-ctp-crust/60 flex items-end sm:items-center justify-center',
   modalContent: 'bg-ctp-surface0 w-full sm:max-w-lg sm:rounded-lg rounded-t-xl p-4 max-h-[80vh] overflow-auto',
   sectionBtn: 'inline-flex items-center justify-center w-8 h-8 min-w-[44px] min-h-[44px] rounded-md bg-ctp-mauve/0 hover:bg-ctp-mauve/20 text-ctp-overlay0 hover:text-ctp-mauve cursor-pointer border-none transition-colors ml-2 align-middle touch-manipulation',
   diffHistory: 'opacity-40 pointer-events-none border-b border-ctp-surface1 pb-2 mb-2',
-  undoBar: 'fixed bottom-24 right-6 z-[9990] flex gap-2',
-  undoBtn: 'min-h-[44px] min-w-[44px] px-3 py-2 rounded-lg text-sm font-semibold border-none cursor-pointer shadow-lg touch-manipulation flex items-center gap-1 transition-opacity',
-  undoActive: 'bg-ctp-blue text-ctp-crust active:bg-ctp-sapphire',
-  undoDisabled: 'opacity-40 pointer-events-none bg-ctp-surface1 text-ctp-overlay0',
-  toast: 'fixed bottom-44 right-6 z-[10002] px-4 py-2 rounded-lg text-sm font-semibold shadow-lg transition-opacity duration-300',
+  toast: 'fixed bottom-24 right-6 z-[10002] px-4 py-2 rounded-lg text-sm font-semibold shadow-lg transition-opacity duration-300',
   toastSuccess: 'bg-ctp-green text-ctp-crust',
   toastError: 'bg-ctp-red text-ctp-crust',
 } as const;
@@ -712,16 +715,98 @@ function buildCompactDiffDom(parent: HTMLElement, original: string, modified: st
   }
 }
 
-// --- File-level FAB ---
+// --- File-level FAB with menu ---
+let fabEl: HTMLButtonElement | null = null;
+let fabMenuEl: HTMLDivElement | null = null;
+let fabMenuOpen = false;
+let undoMenuItem: HTMLButtonElement | null = null;
+let redoMenuItem: HTMLButtonElement | null = null;
+
+function toggleFabMenu() {
+  if (!fabMenuEl || !fabEl) return;
+  fabMenuOpen = !fabMenuOpen;
+  fabMenuEl.style.display = fabMenuOpen ? 'flex' : 'none';
+  // Swap icon
+  const icon = fabEl.querySelector('svg');
+  if (icon) {
+    const path = icon.querySelector('path');
+    if (path) path.setAttribute('d', fabMenuOpen ? CLOSE_ICON_PATH : EDIT_ICON_PATH);
+  }
+}
+
+function closeFabMenu() {
+  if (!fabMenuOpen) return;
+  fabMenuOpen = false;
+  if (fabMenuEl) fabMenuEl.style.display = 'none';
+  if (fabEl) {
+    const path = fabEl.querySelector('path');
+    if (path) path.setAttribute('d', EDIT_ICON_PATH);
+  }
+}
+
 function createFab() {
   if (!filePath) return;
 
+  // FAB button
   const fab = document.createElement('button');
   fab.className = tw.fab;
   fab.appendChild(createSvgIcon(EDIT_ICON_PATH, 'w-6 h-6'));
-  fab.title = 'AI Edit File';
-  fab.addEventListener('click', () => showFileEditModal());
+  fab.title = 'AI Edit';
+  fab.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleFabMenu();
+  });
   document.body.appendChild(fab);
+  fabEl = fab;
+
+  // Menu container
+  const menu = document.createElement('div');
+  menu.className = tw.fabMenu;
+  menu.style.display = 'none';
+  menu.addEventListener('click', (e) => e.stopPropagation());
+
+  // Edit item
+  const editItem = document.createElement('button');
+  editItem.className = `${tw.fabMenuItem} ${tw.fabMenuActive}`;
+  editItem.appendChild(createSvgIcon(EDIT_ICON_PATH, 'w-4 h-4'));
+  editItem.appendChild(document.createTextNode('Edit'));
+  editItem.addEventListener('click', () => {
+    closeFabMenu();
+    showFileEditModal();
+  });
+
+  // Undo item
+  const undoItem = document.createElement('button');
+  undoItem.className = `${tw.fabMenuItem} ${tw.fabMenuDisabled}`;
+  undoItem.appendChild(createSvgIcon(UNDO_ICON_PATH, 'w-4 h-4'));
+  undoItem.appendChild(document.createTextNode('Undo'));
+  undoItem.addEventListener('click', () => {
+    if (!historyCanUndo) return;
+    closeFabMenu();
+    performUndo();
+  });
+  undoMenuItem = undoItem;
+
+  // Redo item
+  const redoItem = document.createElement('button');
+  redoItem.className = `${tw.fabMenuItem} ${tw.fabMenuDisabled}`;
+  redoItem.appendChild(createSvgIcon(REDO_ICON_PATH, 'w-4 h-4'));
+  redoItem.appendChild(document.createTextNode('Redo'));
+  redoItem.addEventListener('click', () => {
+    if (!historyCanRedo) return;
+    closeFabMenu();
+    performRedo();
+  });
+  redoMenuItem = redoItem;
+
+  menu.appendChild(editItem);
+  menu.appendChild(undoItem);
+  menu.appendChild(redoItem);
+  document.body.appendChild(menu);
+  fabMenuEl = menu;
+
+  // Close menu on outside tap
+  document.addEventListener('click', () => closeFabMenu());
 }
 
 function showFileEditModal() {
@@ -918,10 +1003,7 @@ function showToast(message: string, type: 'success' | 'error') {
   }, 1500);
 }
 
-// --- Undo/Redo Bar ---
-let undoBtn: HTMLButtonElement | null = null;
-let redoBtn: HTMLButtonElement | null = null;
-let undoBarEl: HTMLDivElement | null = null;
+// --- Undo/Redo state ---
 let historyCanUndo = false;
 let historyCanRedo = false;
 
@@ -938,17 +1020,19 @@ async function refreshHistoryState() {
     const data: { canUndo: boolean; canRedo: boolean } = await res.json();
     historyCanUndo = data.canUndo;
     historyCanRedo = data.canRedo;
-    updateUndoBarState();
+    updateMenuState();
   } catch (err) {
     console.warn('[AI Edit] Failed to refresh history state:', err);
   }
 }
 
-function updateUndoBarState() {
-  if (!undoBtn || !redoBtn || !undoBarEl) return;
-  undoBtn.className = `${tw.undoBtn} ${historyCanUndo ? tw.undoActive : tw.undoDisabled}`;
-  redoBtn.className = `${tw.undoBtn} ${historyCanRedo ? tw.undoActive : tw.undoDisabled}`;
-  // Always visible; buttons toggle between active/disabled
+function updateMenuState() {
+  if (undoMenuItem) {
+    undoMenuItem.className = `${tw.fabMenuItem} ${historyCanUndo ? tw.fabMenuActive : tw.fabMenuDisabled}`;
+  }
+  if (redoMenuItem) {
+    redoMenuItem.className = `${tw.fabMenuItem} ${historyCanRedo ? tw.fabMenuActive : tw.fabMenuDisabled}`;
+  }
 }
 
 async function performUndo() {
@@ -1079,35 +1163,8 @@ function scrollToHint() {
   }, 1500);
 }
 
-function createUndoBar() {
-  if (!filePath) return;
-
-  const bar = document.createElement('div');
-  bar.className = tw.undoBar;
-  // Always show undo bar (disabled state visible)
-
-  const undo = document.createElement('button');
-  undo.className = `${tw.undoBtn} ${tw.undoDisabled}`;
-  undo.textContent = '↩ Undo';
-  undo.addEventListener('click', performUndo);
-
-  const redo = document.createElement('button');
-  redo.className = `${tw.undoBtn} ${tw.undoDisabled}`;
-  redo.textContent = '↪ Redo';
-  redo.addEventListener('click', performRedo);
-
-  bar.appendChild(undo);
-  bar.appendChild(redo);
-  document.body.appendChild(bar);
-
-  undoBtn = undo;
-  redoBtn = redo;
-  undoBarEl = bar;
-}
-
 // --- Initialize ---
 createFab();
-createUndoBar();
 setupSectionButtons();
 refreshHistoryState();
 
