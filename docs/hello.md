@@ -2,7 +2,7 @@
 title: Hello World
 ---
 
-# Welcome to redline
+# Welcome to redline-ai
 
 これは**redline-ai**ツールのうんちドキュメントです。
 

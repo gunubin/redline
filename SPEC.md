@@ -1,4 +1,4 @@
-# redline — Inline AI Editing for Local Files
+# redline-ai — Inline AI Editing for Local Files
 
 ## Why
 
@@ -15,7 +15,7 @@
 ローカルファイルをブラウザでプレビューし、テキストを選択してAI agentにインライン編集を指示するCLIツール。
 
 ```
-$ redline serve ./docs
+$ redline-ai serve ./docs
 → http://localhost:4321 でMarkdownをHTMLプレビュー
 → テキスト選択 → "AI Edit" ボタン → 指示入力 → diff表示 → Apply/Reject
 ```
@@ -63,7 +63,7 @@ trait Agent:
 ### 1. サーバー起動
 
 ```
-$ redline serve ./docs --port 4321
+$ redline-ai serve ./docs --port 4321
 ```
 
 - 指定ディレクトリのMarkdown/MDXファイルを検出
@@ -174,25 +174,25 @@ POST /api/apply
 
 ### 1. フレームワーク非依存
 
-dev:editはAstroインテグレーションとして実装されている。redlineは独立したCLIツールとして、任意のMarkdownディレクトリで動作する。
+dev:editはAstroインテグレーションとして実装されている。redline-aiは独立したCLIツールとして、任意のMarkdownディレクトリで動作する。
 
 ### 2. ビルトインMarkdownレンダリング
 
-Astroのdevサーバーに依存せず、redline自身がMarkdownをHTMLにレンダリングする。GFM、シンタックスハイライト、画像表示をサポート。
+Astroのdevサーバーに依存せず、redline-ai自身がMarkdownをHTMLにレンダリングする。GFM、シンタックスハイライト、画像表示をサポート。
 
 ### 3. ファイルパス解決の汎用化
 
-dev:editは `src/content/blog/{slug}.mdx` 固定。redlineは任意のディレクトリ構造に対応。
+dev:editは `src/content/blog/{slug}.mdx` 固定。redline-aiは任意のディレクトリ構造に対応。
 
 ```
-redline serve ./docs          # docs/ 以下の全.md/.mdx
-redline serve ./              # カレントディレクトリ
-redline serve ~/notes         # Obsidian vault
+redline-ai serve ./docs          # docs/ 以下の全.md/.mdx
+redline-ai serve ./              # カレントディレクトリ
+redline-ai serve ~/notes         # Obsidian vault
 ```
 
 ### 4. Agent抽象化
 
-dev:editはClaude Code固定。redlineはagent連携をtraitで抽象化し、将来的に複数agentに対応可能。
+dev:editはClaude Code固定。redline-aiはagent連携をtraitで抽象化し、将来的に複数agentに対応可能。
 
 ### 5. ファイル一覧 / ナビゲーション
 
@@ -215,7 +215,7 @@ dev:editはClaude Code固定。redlineはagent連携をtraitで抽象化し、�
 ## CLIコマンド
 
 ```
-redline serve <dir>            # プレビューサーバー起動
+redline-ai serve <dir>            # プレビューサーバー起動
   --port <port>                # ポート番号（デフォルト: 4321）
   --agent <agent>              # 使用するagent（デフォルト: claude-code）
   --open                       # ブラウザを自動で開く

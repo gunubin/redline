@@ -63,8 +63,8 @@ export async function startServeMode(
     port: opts.port,
     hostname: '127.0.0.1',
   }, (info) => {
-    console.log(`[redline] Serving ${rootDir}`);
-    console.log(`[redline] http://localhost:${info.port}`);
+    console.log(`[redline-ai] Serving ${rootDir}`);
+    console.log(`[redline-ai] http://localhost:${info.port}`);
   });
 
   setupHMR(server as import('node:http').Server, rootDir);

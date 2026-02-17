@@ -51,10 +51,10 @@
   "author": "gunubin",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/gunubin/redline.git"
+    "url": "git+https://github.com/gunubin/redline-ai.git"
   },
-  "homepage": "https://github.com/gunubin/redline#readme",
+  "homepage": "https://github.com/gunubin/redline-ai#readme",
   "bugs": {
-    "url": "https://github.com/gunubin/redline/issues"
+    "url": "https://github.com/gunubin/redline-ai/issues"
   }
 }

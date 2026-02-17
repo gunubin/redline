@@ -151,9 +151,9 @@ window.__REDLINE_CONFIG = {
   });
 
   server.listen(opts.port, '127.0.0.1', () => {
-    console.log(`[redline] Proxy mode`);
-    console.log(`[redline] Target: ${target}`);
-    console.log(`[redline] Root: ${rootDir}`);
-    console.log(`[redline] http://localhost:${opts.port}`);
+    console.log(`[redline-ai] Proxy mode`);
+    console.log(`[redline-ai] Target: ${target}`);
+    console.log(`[redline-ai] Root: ${rootDir}`);
+    console.log(`[redline-ai] http://localhost:${opts.port}`);
   });
 }

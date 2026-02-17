@@ -78,7 +78,7 @@ function renderSidebar(files: string[], currentPath: string): string {
 
   return `<aside id="sidebar" class="fixed inset-y-0 left-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-40 transform transition-transform duration-200 lg:translate-x-0 -translate-x-full">
   <div class="flex items-center justify-between px-3 py-2 border-b border-gray-800">
-    <a href="/" class="text-violet-400 font-bold text-sm tracking-wide">redline</a>
+    <a href="/" class="text-violet-400 font-bold text-sm tracking-wide">redline-ai</a>
     <button id="sidebar-close" class="lg:hidden text-gray-500 hover:text-gray-300 p-1">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
     </button>
@@ -100,7 +100,7 @@ export function wrapInHtml(content: string, title: string, filePath: string, fil
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${escapedTitle} - redline</title>
+  <title>${escapedTitle} - redline-ai</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .collapsed .folder-contents { display: none; }
@@ -209,7 +209,7 @@ export function renderFileListHtml(files: string[]): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>redline</title>
+  <title>redline-ai</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     .collapsed .folder-contents { display: none; }
