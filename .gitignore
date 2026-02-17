@@ -3,3 +3,4 @@ dist/
 overlay/dist/
 *.tsbuildinfo
 .idea/
+plans/
