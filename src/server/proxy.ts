@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import httpProxy from 'http-proxy';
 import { Hono } from 'hono';
@@ -39,17 +39,20 @@ export async function startProxyMode(opts: ProxyOptions): Promise<void> {
 
   // Create Hono app for API routes
   const app = new Hono();
-  app.use('*', cors({ origin: '*' }));
+  app.use('*', cors({
+    origin: (origin) => /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ? origin : null,
+  }));
   registerApiRoutes(app, rootDir);
 
   // Serve overlay JS via Hono
   app.get('/__redline/overlay.js', (c) => {
     const overlayPath = resolve(import.meta.dirname, '../../overlay/dist/overlay.js');
-    if (!existsSync(overlayPath)) {
+    try {
+      const js = readFileSync(overlayPath, 'utf-8');
+      return c.body(js, 200, { 'Content-Type': 'application/javascript' });
+    } catch {
       return c.text('Overlay not built. Run: npm run build:overlay', 500);
     }
-    const js = readFileSync(overlayPath, 'utf-8');
-    return c.body(js, 200, { 'Content-Type': 'application/javascript' });
   });
 
   // Create http-proxy (selfHandleResponse so we can inject into HTML)
@@ -79,9 +82,12 @@ export async function startProxyMode(opts: ProxyOptions): Promise<void> {
         res.writeHead(honoRes.status, Object.fromEntries(honoRes.headers.entries()));
         const body = await honoRes.arrayBuffer();
         res.end(Buffer.from(body));
-      }).catch(() => {
-        res.writeHead(500);
-        res.end('Internal error');
+      }).catch((err) => {
+        console.error('[redline-ai] Internal Hono handler error:', err);
+        if (!res.headersSent) {
+          res.writeHead(500);
+          res.end('Internal error');
+        }
       });
       return;
     }

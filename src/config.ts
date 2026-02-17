@@ -24,14 +24,30 @@ export function loadConfig(configPath: string): RedlineConfig | null {
   }
 
   const configDir = resolve(absPath, '..');
-  const raw = readFileSync(absPath, 'utf-8');
-  const parsed = parse(raw) as {
+
+  let raw: string;
+  try {
+    raw = readFileSync(absPath, 'utf-8');
+  } catch (err) {
+    console.error(`[redline-ai] Failed to read config: ${absPath}`);
+    console.error(err instanceof Error ? err.message : err);
+    return null;
+  }
+
+  let parsed: {
     proxy?: {
       target?: string;
       root?: string;
       routes?: RouteConfig[];
     };
   };
+  try {
+    parsed = parse(raw) as typeof parsed;
+  } catch (err) {
+    console.error(`[redline-ai] Invalid TOML in config: ${absPath}`);
+    console.error(err instanceof Error ? err.message : err);
+    return null;
+  }
 
   // Resolve root relative to config file location
   const rawRoot = parsed.proxy?.root ?? '.';

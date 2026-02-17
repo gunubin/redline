@@ -156,7 +156,7 @@ ${content}
   <script>
     window.__REDLINE_CONFIG = {
       apiBase: "",
-      filePath: "${escapeJs(filePath)}",
+      filePath: ${JSON.stringify(filePath)},
       articleSelector: "#article-body"
     };
   </script>
@@ -188,7 +188,9 @@ ${content}
               if (window.__REDLINE_SHOULD_RELOAD && !window.__REDLINE_SHOULD_RELOAD()) return;
               location.reload();
             }
-          } catch {}
+          } catch (err) {
+            console.error('[redline-ai] HMR message error:', err);
+          }
         };
         ws.onclose = function() {
           setTimeout(connect, 1000);
@@ -269,6 +271,3 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
-function escapeJs(str: string): string {
-  return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, '\\n');
-}

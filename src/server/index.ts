@@ -5,7 +5,9 @@ import { registerApiRoutes } from './api.js';
 export function createApp(rootDir: string): Hono {
   const app = new Hono();
 
-  app.use('*', cors({ origin: '*' }));
+  app.use('*', cors({
+    origin: (origin) => /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin) ? origin : null,
+  }));
 
   registerApiRoutes(app, rootDir);
 
