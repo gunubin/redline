@@ -931,7 +931,10 @@ async function refreshHistoryState() {
     const res = await fetch(
       `${API_BASE}/api/history-state?filePath=${encodeURIComponent(filePath)}`,
     );
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.warn(`[AI Edit] refreshHistoryState: HTTP ${res.status}`);
+      return;
+    }
     const data: { canUndo: boolean; canRedo: boolean } = await res.json();
     historyCanUndo = data.canUndo;
     historyCanRedo = data.canRedo;

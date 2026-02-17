@@ -339,6 +339,9 @@ export function registerApiRoutes(app: Hono, rootDir: string, agentConfig?: Agen
     } catch {
       return c.json({ error: 'Invalid JSON in request body' }, 400);
     }
+    if (!body.filePath || typeof body.filePath !== 'string') {
+      return c.json({ error: 'Missing filePath in request body' }, 400);
+    }
     const absPath = validateFilePath(rootDir, body.filePath);
     if (!absPath) {
       return c.json({ error: 'Invalid file path' }, 403);
