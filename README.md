@@ -1,4 +1,4 @@
-# redline
+# redline-ai
 
 Edit your docs while reading them.
 
@@ -6,9 +6,9 @@ Edit your docs while reading them.
 
 Fixing a document always means switching between two modes: reading and editing. You read the rendered output, spot something wrong, switch to your editor, find the line, fix it, switch back to the preview, and repeat. The context switch is small but constant, and it adds up.
 
-## What redline Does
+## What redline-ai Does
 
-redline lets you preview local Markdown files in the browser and edit them right there. Select any text, tell the AI what to change, review the diff, and apply it. The source file is updated on disk. No copy-pasting, no switching windows.
+redline-ai lets you preview local Markdown files in the browser and edit them right there. Select any text, tell the AI what to change, review the diff, and apply it. The source file is updated on disk. No copy-pasting, no switching windows.
 
 ```
 $ npx redline-ai serve ./docs
@@ -36,7 +36,7 @@ The source Markdown file is rewritten on disk. The preview refreshes automatical
 
 ### Standalone (`serve`)
 
-redline renders your Markdown files itself. Point it at any directory.
+redline-ai renders your Markdown files itself. Point it at any directory.
 
 ```
 $ npx redline-ai serve ./docs
@@ -46,7 +46,7 @@ $ npx redline-ai serve .
 
 ### Proxy (`proxy`)
 
-Already running a dev server (Astro, Next.js, etc.)? redline sits in front of it, injecting the editing overlay into your existing site.
+Already running a dev server (Astro, Next.js, etc.)? redline-ai sits in front of it, injecting the editing overlay into your existing site.
 
 ```
 $ npx redline-ai proxy --target http://localhost:3000 --root ./src/content --config redline.toml
@@ -83,7 +83,7 @@ file = ":path.md"
 - Node.js 22+
 - [Claude Code CLI](https://docs.anthropic.com/en/docs/claude-code) installed and authenticated
 
-> **Note:** redline currently uses Claude Code as the AI backend. Other AI agent CLIs are not supported yet.
+> **Note:** redline-ai currently uses Claude Code as the AI backend. Other AI agent CLIs are not supported yet.
 
 ## Install
 
